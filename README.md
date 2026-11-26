@@ -2,11 +2,10 @@
 
 ### Autonomous Enterprise Intelligence & Operations Agent
 
-An AI-powered multi-agent platform that analyzes enterprise data, identifies
-operational problems, generates recommendations, and executes approved
-workflows — with a human-in-the-loop gate on anything risky.
+A collaborative multi-agent AI platform that studies enterprise data, spots problems in day-to-day operations, recommends what to do about them, and executes the workflows that get approved, always routing risky decisions through a human reviewer first.
+## Pipeline at a Glance
 
-This implements the architecture:
+Each request travels through the following chain of components:
 
 ```
 Supervisor Agent
@@ -20,34 +19,29 @@ Supervisor Agent
    -> Action
 ```
 
-Tech: **FastAPI · Anthropic Claude (LLM/Agentic AI) · Multi-Agent orchestration
-· RAG · scikit-learn (ML) · SQLite (SQL) · ChromaDB (Vector DB)**
+**Built with:** FastAPI · Anthropic Claude (LLM / agentic AI) · multi-agent orchestration · RAG · scikit-learn (machine learning) · SQLite (SQL) · ChromaDB (vector database)
 
-Domains covered: Production, Inventory, Quality, Operations, Procurement,
-HR, Sales, Finance, Projects, Reporting.
+**Business areas supported:** Production, Inventory, Quality, Operations, Procurement, HR, Sales, Finance, Projects, and Reporting.
 
 ---
 
-## 1. What each agent does
+## 1. Meet the Agents
 
-| Agent | File | Role |
+| Agent | Source file | What it is responsible for |
 |---|---|---|
-| Supervisor | `app/agents/supervisor_agent.py` | Orchestrates the full pipeline, persists the run as a `workflow`, and closes the loop after a human decision. |
-| Data Agent | `app/agents/data_agent.py` | Pulls the relevant domain data from SQLite and computes a statistical summary. |
-| SQL Agent | `app/agents/sql_agent.py` | Translates the operator's question into a **read-only** SQL query (LLM-generated, validated, then executed). |
-| ML Agent | `app/agents/ml_agent.py` | Runs IsolationForest anomaly detection + a linear trend/forecast on the domain's key metric. |
-| RAG Agent | `app/agents/rag_agent.py` | Retrieves relevant company SOPs/policies from the vector DB (ChromaDB). |
-| Decision Agent | `app/agents/decision_agent.py` | LLM synthesizes data + SQL + ML + RAG context into a root-cause analysis and ranked recommendations. |
-| Risk Engine | `app/agents/risk_engine.py` | Rule-based (auditable) scoring of each recommendation; decides if human approval is required. |
-| Approval Manager | `app/approval/approval_manager.py` | Persists pending approvals; on decision, triggers execution and updates the workflow. |
-| Action Agent | `app/agents/action_agent.py` | Executes approved/auto-cleared recommendations (simulated integrations — see below). |
+| Supervisor | `app/agents/supervisor_agent.py` | Coordinates the end-to-end run, stores it as a `workflow`, and wraps things up once a person has made a decision. |
+| Data Agent | `app/agents/data_agent.py` | Loads the data for the chosen domain from SQLite and produces summary statistics. |
+| SQL Agent | `app/agents/sql_agent.py` | Converts the operator's question into a **read-only** SQL query, which the LLM writes, the system checks, and only then runs. |
+| ML Agent | `app/agents/ml_agent.py` | Detects anomalies with IsolationForest and projects a linear trend and forecast for the domain's main metric. |
+| RAG Agent | `app/agents/rag_agent.py` | Looks up matching company SOPs and policies in the ChromaDB vector store. |
+| Decision Agent | `app/agents/decision_agent.py` | Has the LLM combine the data, SQL, ML, and RAG findings into a root-cause explanation and a ranked list of recommendations. |
+| Risk Engine | `app/agents/risk_engine.py` | Scores every recommendation using transparent, rule-based logic and determines whether a person must approve it. |
+| Approval Manager | `app/approval/approval_manager.py` | Stores approvals that are waiting; once someone decides, it kicks off execution and updates the workflow. |
+| Action Agent | `app/agents/action_agent.py` | Carries out recommendations that were approved or automatically cleared (integrations are simulated, as described in section 7). |
 
-Everything runs **fully offline** with zero configuration: if `ANTHROPIC_API_KEY`
-isn't set, the LLM calls fall back to clearly-labeled deterministic stubs so
-you can explore the whole pipeline, UI, and approval flow immediately. Set
-the key to get real reasoning from the SQL and Decision agents.
+The platform needs **no setup to try out and works fully offline**. When `ANTHROPIC_API_KEY` is missing, any LLM call is answered by a clearly labeled, deterministic placeholder, so the whole pipeline, interface, and approval flow can be explored straight away. Adding the key switches the SQL and Decision agents over to genuine LLM reasoning.
 
-## 2. Project layout
+## 2. Repository Layout
 
 ```
 enterprise-agent/
@@ -69,17 +63,17 @@ enterprise-agent/
 │   │   └── action_agent.py
 │   ├── approval/approval_manager.py
 │   └── knowledge_base/sample_docs.py   # seed SOP/policy documents for RAG
-├── static/index.html            # single-page operations console (no build step)
+├── static/index.html            # single-page operations console 
 ├── scripts/seed_data.py         # standalone DB/vector-store seeding
-├── tests/                       # pytest suite (runs fully offline)
+├── tests/                       # pytest suite-runs fully offline
 ├── requirements.txt
-└── .env.example
+└── .env
 ```
 
-## 3. Setup (VS Code)
+## 3. Getting It Running (VS Code)
 
-1. Open this folder in VS Code (`File > Open Folder…`).
-2. Create and activate a virtual environment:
+1. Launch VS Code and open the project folder with `File > Open Folder…`.
+2. Make a virtual environment and switch it on:
 
    ```bash
    python -m venv .venv
@@ -89,86 +83,69 @@ enterprise-agent/
    .venv\Scripts\activate
    ```
 
-3. Install dependencies:
+3. Install the required packages:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Copy the env template and (optionally) add your Anthropic API key:
+4. Duplicate the sample environment file and, if you like, enter your Anthropic API key:
 
    ```bash
    cp .env.example .env
    # then edit .env and set ANTHROPIC_API_KEY=sk-ant-...
    ```
 
-   Get a key at https://console.anthropic.com/. Without a key the app still
-   runs completely — the SQL and Decision agents just use offline stubs.
+   You can create a key at https://console.anthropic.com/. The key is not mandatory: leave it out and the application works in full, with the SQL and Decision agents relying on offline placeholders.
 
-5. Run the server:
+5. Launch the server:
 
    ```bash
    uvicorn app.main:app --reload
    ```
 
-6. Open the console: **http://localhost:8000/** — a full dashboard where you
-   can pick a domain, ask a question, watch the pipeline run step by step,
-   and approve/reject flagged recommendations.
+6. Visit the console at **http://localhost:8000/**. This dashboard lets you choose a domain, type in a question, follow each stage of the pipeline as it executes, and approve or reject any recommendations that were flagged.
 
-   Interactive API docs (Swagger): **http://localhost:8000/docs**
+   Swagger-based API documentation is available at **http://localhost:8000/docs**.
 
-The database (`data/enterprise.db`) and vector store (`data/chroma/`) are
-created and seeded automatically on first startup — no manual setup step
-required. To reset with fresh synthetic data at any time:
+On the first launch, the app builds and fills the database (`data/enterprise.db`) and the vector store (`data/chroma/`) by itself, so nothing needs to be prepared by hand. If you ever want to wipe them and start over with new synthetic data, run:
 
 ```bash
 python scripts/seed_data.py --force
 ```
 
-## 4. Try it
+## 4. A Quick Walkthrough
 
-In the console, pick **Production** and ask:
+Open the console, choose **Production**, and enter this question:
 
 > Why is Line-A's defect rate rising and what should we do about it?
 
-The synthetic seed data deliberately drifts Line-A's defect/downtime rate
-upward over the last ~6 days and spikes its complaint count, so the ML
-Agent flags it as anomalous and the Decision Agent (with a real API key)
-will trace it back through the retrieved SOP. Try **Inventory** ("which SKUs
-need reordering?") or **Procurement** ("is any supplier's on-time delivery
-degrading?") for other pre-baked scenarios.
+The seeded sample data is built so that Line-A's defect and downtime rates creep upward across roughly the past 6 days, and its complaint count jumps sharply. The ML Agent therefore marks it as anomalous, and, when a real API key is configured, the Decision Agent follows the problem back to its cause using the SOP that was retrieved. Two more ready-made scenarios are worth a look: ask **Inventory** "which SKUs need reordering?" or ask **Procurement** "is any supplier's on-time delivery degrading?"
 
-High-risk recommendations (e.g. holding a shipment, switching a supplier)
-will stop in **Pending approvals** until you approve or reject them.
+Recommendations carrying high risk, such as holding a shipment or changing suppliers, are parked under **Pending approvals** until you either approve or reject them.
 
-## 5. API reference
+## 5. API Endpoints
 
-| Method | Path | Purpose |
+| Method | Path | Description |
 |---|---|---|
-| POST | `/api/analyze` | Run the full pipeline: `{ "query": "...", "domain": "production" }` |
-| GET | `/api/workflows` | List past workflow runs |
-| GET | `/api/workflows/{id}` | Full step-by-step trace of one run |
-| GET | `/api/approvals?status=pending` | List pending (or all) approvals |
-| POST | `/api/approvals/{id}/decide` | `{ "approved": true, "decided_by": "...", "comment": "..." }` |
-| GET | `/api/domains/{domain}/data` | Raw Data Agent pull for a domain (debugging) |
-| GET | `/api/actions` | Log of every executed action |
-| GET | `/api/health` | Service status, whether an LLM key is configured |
+| POST | `/api/analyze` | Executes the complete pipeline, with a body of `{ "query": "...", "domain": "production" }` |
+| GET | `/api/workflows` | Returns the list of earlier workflow runs |
+| GET | `/api/workflows/{id}` | Returns the detailed, step-by-step trace of a single run |
+| GET | `/api/approvals?status=pending` | Returns pending approvals, or all of them |
+| POST | `/api/approvals/{id}/decide` | Records a decision, with a body of `{ "approved": true, "decided_by": "...", "comment": "..." }` |
+| GET | `/api/domains/{domain}/data` | Returns the raw data the Data Agent collects for a domain, useful for debugging |
+| GET | `/api/actions` | Returns a log of all actions that have been executed |
+| GET | `/api/health` | Reports service status and whether an LLM key is set |
 
-## 6. Risk & approval logic
+## 6. How Risk Is Judged and Approvals Are Triggered
 
-`RiskEngine` (rule-based, not LLM-based — kept auditable on purpose) scores
-0–100 from: domain criticality, ML-detected anomaly rate, trend volatility,
-the Decision Agent's own recommendation priority, high-impact keywords
-(e.g. "hold shipment", "layoff", "recall"), and specific high-risk
-`action_type`s. Anything at/above `RISK_APPROVAL_THRESHOLD` (default `55`,
-configurable in `.env`) — or matching a high-impact keyword/action type
-regardless of score — stops for human approval instead of auto-executing.
+The `RiskEngine` deliberately uses fixed rules instead of an LLM so that every score can be audited. It gives each recommendation a number from 0 to 100, drawing on these inputs: how critical the domain is, the anomaly rate found by the ML model, how volatile the trend is, the priority the Decision Agent attached to the recommendation, high-impact keywords (for example "hold shipment", "layoff", or "recall"), and certain high-risk `action_type` values.
 
-## 7. Extending to real systems
+A recommendation is not executed automatically if its score reaches `RISK_APPROVAL_THRESHOLD` (set to `55` by default and adjustable in `.env`). The same applies whenever it contains a high-impact keyword or uses a high-risk action type, whatever its score. In those cases a human has to approve it first.
 
-`ActionAgent` handlers (`app/agents/action_agent.py`) are intentionally
-simulated — each one logs a structured result and is the seam where you'd
-wire up a real system:
+## 7. Connecting to Your Own Systems
+
+The handlers in `ActionAgent` (`app/agents/action_agent.py`) are simulations by design. Each records a structured result and marks the exact point where a genuine integration would be attached:
 
 ```python
 def _handle_create_reorder(rec: dict, domain: str) -> dict:
@@ -176,17 +153,12 @@ def _handle_create_reorder(rec: dict, domain: str) -> dict:
     return {"system": "ERP/Procurement", "operation": "purchase_order.create", ...}
 ```
 
-Swap `app/vector_store.py` for a hosted vector DB (Pinecone, Weaviate, etc.)
-by keeping the same `query()`/`seed_if_empty()` interface. Swap
-`app/database.py`'s SQLite calls for a connection to your real warehouse —
-the Data/SQL Agents only depend on `get_conn()` and the `DOMAIN_TABLE_MAP`.
+To use a managed vector database such as Pinecone or Weaviate, replace `app/vector_store.py` while keeping its `query()` and `seed_if_empty()` interface unchanged. To point at your own data warehouse, replace the SQLite calls in `app/database.py`; the Data and SQL agents rely only on `get_conn()` and `DOMAIN_TABLE_MAP`.
 
-## 8. Tests
+## 8. Running the Tests
 
 ```bash
 pytest -v
 ```
 
-Runs fully offline against a temporary SQLite DB + vector store (see
-`tests/conftest.py`), covering each agent individually, the full
-Supervisor-orchestrated pipeline, the approval loop, and the HTTP API.
+The suite needs no network access: it runs against a throwaway SQLite database and vector store (configured in `tests/conftest.py`). It exercises every agent on its own, the full pipeline driven by the Supervisor, the approval cycle, and the HTTP API.
